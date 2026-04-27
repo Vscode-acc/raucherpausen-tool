@@ -1,8 +1,49 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, screen } from "electron";
 import path from "node:path";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
+import os from "node:os";
 import type { OpenDialogOptions } from "electron";
-import { log, logError, getLogFilePath } from "./logger";
+
+// ===== LOGGING =====
+const logsDir = path.join(os.homedir(), "AppData", "Local", "raucherpausen-tool", "logs");
+try {
+  if (!fsSync.existsSync(logsDir)) {
+    fsSync.mkdirSync(logsDir, { recursive: true });
+  }
+} catch {
+  console.error("Failed to create logs directory");
+}
+
+const logFile = path.join(logsDir, `app-${new Date().toISOString().split("T")[0]}.log`);
+
+function log(...args: any[]) {
+  const timestamp = new Date().toISOString();
+  const message = `[${timestamp}] ${args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" ")}`;
+  console.log(message);
+  try {
+    fsSync.appendFileSync(logFile, message + "\n", { encoding: "utf-8" });
+  } catch (e) {
+    console.error("Failed to write to log file:", e);
+  }
+}
+
+function logError(error: any, context?: string) {
+  const timestamp = new Date().toISOString();
+  const errorStr = error instanceof Error ? `${error.name}: ${error.message}\n${error.stack}` : JSON.stringify(error);
+  const message = context ? `[${timestamp}] ERROR [${context}] ${errorStr}` : `[${timestamp}] ERROR ${errorStr}`;
+  console.error(message);
+  try {
+    fsSync.appendFileSync(logFile, message + "\n", { encoding: "utf-8" });
+  } catch (e) {
+    console.error("Failed to write error to log file:", e);
+  }
+}
+
+function getLogFilePath() {
+  return logFile;
+}
+// ===== END LOGGING =====
 
 const isDev = !app.isPackaged;
 const shouldOpenDevTools = process.argv.includes("-dev");
