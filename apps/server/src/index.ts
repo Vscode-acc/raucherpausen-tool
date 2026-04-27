@@ -118,6 +118,8 @@ wss.on("connection", (ws) => {
   let memberId: string | null = null;
   let isAlive = true;
 
+  console.log(`[ws:connect] ${socketId}`);
+
   ws.on("pong", () => {
     isAlive = true;
   });
@@ -127,12 +129,14 @@ wss.on("connection", (ws) => {
     try {
       raw = JSON.parse(buf.toString());
     } catch {
+      console.log(`[ws:error:json] ${socketId} - Invalid JSON`);
       send(ws, { type: "error", message: "Invalid JSON" });
       return;
     }
 
     const parsed = ClientMsg.safeParse(raw);
     if (!parsed.success) {
+      console.log(`[ws:error:parse] ${socketId} - Invalid message format`);
       send(ws, { type: "error", message: "Invalid message" });
       return;
     }
@@ -146,6 +150,8 @@ wss.on("connection", (ws) => {
       room.members.set(memberId, { id: memberId, name: safeName, isSmoking: false });
       room.sockets.set(memberId, ws);
 
+      console.log(`[ws:join] ${memberId} joined room ${room.code} as "${safeName}" (${room.members.size} total)`);
+
       // send initial presence to joiner + broadcast update
       send(ws, { type: "joined", id: memberId, code: room.code });
       broadcast(room, presencePayload(room));
@@ -155,6 +161,7 @@ wss.on("connection", (ws) => {
 
     if (msg.type === "toggleSmoking") {
       if (!room || !memberId) {
+        console.log(`[ws:error] ${socketId} - toggleSmoking but not joined`);
         send(ws, { type: "error", message: "Not joined" });
         return;
       }
@@ -162,6 +169,7 @@ wss.on("connection", (ws) => {
       if (!member) return;
 
       member.isSmoking = msg.isSmoking;
+      console.log(`[ws:smoking] ${memberId} in ${room.code}: ${msg.isSmoking ? "smoking" : "not smoking"}`);
       broadcast(room, { type: "smokingNotice", id: member.id, name: member.name, isSmoking: member.isSmoking });
       broadcast(room, presencePayload(room));
       maybeEmitMajority(room);
@@ -170,6 +178,7 @@ wss.on("connection", (ws) => {
 
     if (msg.type === "chatMessage") {
       if (!room || !memberId) {
+        console.log(`[ws:error] ${socketId} - chatMessage but not joined`);
         send(ws, { type: "error", message: "Not joined" });
         return;
       }
@@ -177,6 +186,7 @@ wss.on("connection", (ws) => {
       if (!member) return;
       const text = msg.text.trim().slice(0, 500);
       if (!text) return;
+      console.log(`[ws:chat] ${memberId} in ${room.code}: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"`);
       broadcast(room, {
         type: "chatMessage",
         id: member.id,
@@ -188,6 +198,7 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
+    console.log(`[ws:close] ${memberId ? `${memberId} from ${room?.code}` : socketId}`);
     if (!room || !memberId) return;
     room.sockets.delete(memberId);
     room.members.delete(memberId);

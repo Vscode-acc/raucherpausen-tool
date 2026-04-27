@@ -18,6 +18,7 @@ export type RpSocket = {
 
 export function connectRealtime(serverUrl: string): RpSocket {
   const wsUrl = serverUrl.replace(/^https?/, (match) => match === "https" ? "wss" : "ws");
+  console.log(`[realtime] connecting to ${wsUrl}`);
   const ws = new WebSocket(wsUrl);
 
   const send = (msg: unknown) => {
@@ -35,6 +36,7 @@ export function connectRealtime(serverUrl: string): RpSocket {
     const s = useAppState.getState();
 
     if (data.type === "joined") {
+      console.log(`[realtime:joined] id=${data.id} code=${data.code}`);
       s.setMyId(data.id);
       s.setJoined(true);
       s.pushToast({ title: "Verbunden", body: `Raum ${data.code}` });
@@ -42,6 +44,7 @@ export function connectRealtime(serverUrl: string): RpSocket {
     }
 
     if (data.type === "presenceUpdate") {
+      console.log(`[realtime:presence] code=${data.code} members=${data.members.length}`);
       s.setMembers(data.members);
       s.setMajorityActive(Boolean((data as any).majorityActive));
       return;
@@ -49,6 +52,7 @@ export function connectRealtime(serverUrl: string): RpSocket {
 
     if (data.type === "smokingNotice") {
       const who = data.name;
+      console.log(`[realtime:smoking] ${who}: ${data.isSmoking ? "smoking" : "not smoking"}`);
       s.pushToast({ title: "Rauchen-Status", body: `${who} ist ${data.isSmoking ? "auf Rauchen" : "wieder da"}` });
       try {
         window.rp?.notify("Raucherpause", `${who} ist ${data.isSmoking ? "auf Rauchen" : "wieder da"}`);
@@ -59,6 +63,7 @@ export function connectRealtime(serverUrl: string): RpSocket {
     }
 
     if (data.type === "majorityState") {
+      console.log(`[realtime:majority] isActive=${data.isActive}`);
       s.setMajorityActive(data.isActive);
       if (data.isActive) {
         s.pushToast({ title: "Mehrheit raucht", body: "DU MUSS RAUCHEN" });
@@ -74,6 +79,7 @@ export function connectRealtime(serverUrl: string): RpSocket {
     }
 
     if (data.type === "chatMessage") {
+      console.log(`[realtime:chat] from ${data.name}: "${data.text.slice(0, 50)}${data.text.length > 50 ? "..." : ""}"`);
       s.addChatMessage({
         id: data.id,
         name: data.name,
@@ -84,21 +90,28 @@ export function connectRealtime(serverUrl: string): RpSocket {
     }
 
     if (data.type === "error") {
+      console.log(`[realtime:error] ${data.message}`);
       s.pushToast({ title: "Server-Fehler", body: data.message });
     }
   });
 
   ws.addEventListener("open", () => {
+    console.log(`[realtime:open] connected`);
     useAppState.getState().pushToast({ title: "Socket", body: "Verbunden" });
   });
 
   ws.addEventListener("close", () => {
+    console.log(`[realtime:close] disconnected`);
     const s = useAppState.getState();
     s.setJoined(false);
     s.setMyId(null);
     s.setMembers([]);
     s.setMajorityActive(false);
     s.pushToast({ title: "Socket", body: "Getrennt" });
+  });
+
+  ws.addEventListener("error", (ev) => {
+    console.log(`[realtime:ws-error]`, ev);
   });
 
   return {
