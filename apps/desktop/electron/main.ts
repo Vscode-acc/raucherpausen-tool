@@ -2,9 +2,14 @@ import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, screen 
 import path from "node:path";
 import fs from "node:fs/promises";
 import type { OpenDialogOptions } from "electron";
+import { log, logError, getLogFilePath } from "../src/logger";
 
 const isDev = !app.isPackaged;
 const shouldOpenDevTools = process.argv.includes("-dev");
+
+log("=== APP START ===");
+log(`isDev: ${isDev}, openDevTools: ${shouldOpenDevTools}`);
+log(`logFile: ${getLogFilePath()}`);
 let controlWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let latestOverlayState: {
@@ -51,6 +56,7 @@ async function loadRenderer(win: BrowserWindow, hash?: string) {
 }
 
 async function createControlWindow() {
+  log("[window] creating control window");
   const win = new BrowserWindow({
     width: 1100,
     height: 720,
@@ -60,6 +66,7 @@ async function createControlWindow() {
     },
   });
   await loadRenderer(win);
+  log("[window] control window rendered");
   // Ensure OS screenshot tools are never blocked by this app window.
   win.setContentProtection(false);
   win.setAlwaysOnTop(false);
@@ -76,6 +83,7 @@ async function createControlWindow() {
 }
 
 async function createOverlayWindow() {
+  log("[window] creating overlay window");
   const primary = screen.getPrimaryDisplay();
   const win = new BrowserWindow({
     x: primary.bounds.x,
@@ -119,22 +127,29 @@ app.on("window-all-closed", () => {
 });
 
 ipcMain.handle("pickGif", async () => {
+  log("[ipc] pickGif requested");
   const opts: OpenDialogOptions = {
     title: "GIF auswählen",
     properties: ["openFile"],
     filters: [{ name: "GIF", extensions: ["gif"] }],
   };
   const res = controlWindow ? await dialog.showOpenDialog(controlWindow, opts) : await dialog.showOpenDialog(opts);
-  if (res.canceled || res.filePaths.length === 0) return null;
+  if (res.canceled || res.filePaths.length === 0) {
+    log("[ipc] pickGif canceled");
+    return null;
+  }
   const filePath = res.filePaths[0]!;
   const buf = await fs.readFile(filePath);
+  log(`[ipc] pickGif loaded: ${filePath} (${buf.length} bytes)`);
   return { filePath, dataBase64: buf.toString("base64") };
 });
 
 ipcMain.handle("getDefaultGif", async () => {
+  log("[ipc] getDefaultGif requested");
   for (const filePath of getDefaultGifCandidates()) {
     try {
       const buf = await fs.readFile(filePath);
+      log(`[ipc] getDefaultGif loaded: ${filePath} (${buf.length} bytes)`);
       return { filePath, dataBase64: buf.toString("base64") };
     } catch {
       // try next candidate
@@ -209,5 +224,14 @@ ipcMain.on("overlay:state", (_evt, nextState: {
     overlayWindow.hide();
   }
   overlayWindow.webContents.send("overlay:state", nextState);
+});
+
+ipcMain.on("frontend:log", (_evt, level: string, ...args: any[]) => {
+  const msg = args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" ");
+  if (level === "error") {
+    logError(msg, "frontend");
+  } else {
+    log(`[${level}]`, msg);
+  }
 });
 

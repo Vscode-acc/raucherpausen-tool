@@ -28,6 +28,9 @@ declare global {
         freeze: boolean;
         visible: boolean;
       }) => void;
+      onOverlayState: (cb: (state: any) => void) => void;
+      log: (...args: any[]) => void;
+      logError: (...args: any[]) => void;
       onOverlayState: (cb: (state: { gifBytesBase64: string | null; scale: number; speed: number; animSpeed: number; freeze: boolean; visible: boolean }) => void) => void;
     };
   }

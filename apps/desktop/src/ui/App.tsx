@@ -113,13 +113,13 @@ export function App() {
     socketRef.current?.close();
     const sock = connectRealtime(s.serverUrl);
     socketRef.current = sock;
-    console.log(`[app] joining room ${code} as ${name}`);
+    window.rp?.log(`[app] joining room ${code} as ${name}`);
     sock.send({ type: "joinRoom", code, name });
   }
 
   function setSmoking(next: boolean) {
     s.setIsSmoking(next);
-    console.log(`[app] toggling smoking: ${next}`);
+    window.rp?.log(`[app] toggling smoking: ${next}`);
     socketRef.current?.send({ type: "toggleSmoking", isSmoking: next });
   }
 
@@ -130,7 +130,7 @@ export function App() {
       s.pushToast({ title: "Chat", body: "Bitte zuerst joinen." });
       return;
     }
-    console.log(`[app] sending chat: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"`);
+    window.rp?.log(`[app] sending chat: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"`);
     socketRef.current?.send({ type: "chatMessage", text });
     setChatInput("");
   }
