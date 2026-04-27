@@ -103,11 +103,6 @@ async function createOverlayWindow() {
   });
   return win;
 }
-  win.webContents.on("did-finish-load", () => {
-    if (latestOverlayState) win.webContents.send("overlay:state", latestOverlayState);
-  });
-  return win;
-}
 
 app.whenReady().then(async () => {
   controlWindow = await createControlWindow();

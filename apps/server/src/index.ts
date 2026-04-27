@@ -217,8 +217,8 @@ wss.on("connection", (ws) => {
   ws.on("close", () => clearInterval(interval));
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   // eslint-disable-next-line no-console
-  console.log(`[server] listening on http://localhost:${PORT}`);
+  console.log(`[server] listening on http://0.0.0.0:${PORT}`);
 });
 

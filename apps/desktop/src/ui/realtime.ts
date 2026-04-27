@@ -17,7 +17,7 @@ export type RpSocket = {
 };
 
 export function connectRealtime(serverUrl: string): RpSocket {
-  const wsUrl = serverUrl.replace(/^http/, "ws");
+  const wsUrl = serverUrl.replace(/^https?/, (match) => match === "https" ? "wss" : "ws");
   const ws = new WebSocket(wsUrl);
 
   const send = (msg: unknown) => {
