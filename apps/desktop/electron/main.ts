@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, screen 
 import path from "node:path";
 import fs from "node:fs/promises";
 import type { OpenDialogOptions } from "electron";
-import { log, logError, getLogFilePath } from "../src/logger";
+import { log, logError, getLogFilePath } from "./logger";
 
 const isDev = !app.isPackaged;
 const shouldOpenDevTools = process.argv.includes("-dev");
