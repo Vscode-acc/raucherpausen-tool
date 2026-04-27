@@ -1,0 +1,18 @@
+{
+  "name": "raucherpausen-tool",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev -w @raucherpausen/server\" \"npm run dev -w @raucherpausen/desktop\"",
+    "dev:server": "npm run dev -w @raucherpausen/server",
+    "dev:desktop": "npm run dev -w @raucherpausen/desktop",
+    "build": "npm run build -w @raucherpausen/server && npm run build -w @raucherpausen/desktop",
+    "lint": "npm run lint -ws"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
+

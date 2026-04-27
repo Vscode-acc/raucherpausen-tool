@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: raucherpausen-server
+    runtime: node
+    buildCommand: npm install && npm run build -w @raucherpausen/server
+    startCommand: npm run start -w @raucherpausen/server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
