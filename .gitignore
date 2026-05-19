@@ -12,3 +12,6 @@ pnpm-debug.log*
 apps/**/node_modules/
 apps/**/dist/
 apps/**/out/
+apps/desktop/release/
+*.exe
+*.zip
