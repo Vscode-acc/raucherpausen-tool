@@ -60,6 +60,34 @@ export function App() {
     reader.readAsDataURL(file);
   }
 
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+
+        // Size limit: 5MB
+        if (file.size > 5 * 1024 * 1024) {
+          s.pushToast({ title: "Datei zu groß", body: "Max. 5MB" });
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string;
+          setSelectedFile({ file, preview: dataUrl });
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
+  }
+
   function sendChat() {
     const text = chatInput.trim();
     if (!text && !selectedFile) {
@@ -247,6 +275,7 @@ export function App() {
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendChat()}
+                onPaste={handlePaste}
                 style={{ flex: 1 }}
               />
               <input
