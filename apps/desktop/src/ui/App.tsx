@@ -11,6 +11,7 @@ export function App() {
   const [myName, setMyName] = useState("");
   const [chatInput, setChatInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<{ file: File; preview: string } | null>(null);
+  const [overlayVisible, setOverlayVisible] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize server URL
@@ -166,16 +167,26 @@ export function App() {
         <div className="sidebar">
           <div className="card">
             <div className="title">{s.currentRoom}</div>
-            <button
-              className="btn"
-              style={{ width: "100%", marginTop: 10 }}
-              onClick={() => {
-                s.setCurrentRoom(null);
-                socketRef.current?.close();
-              }}
-            >
-              Raum wechseln
-            </button>
+            {s.currentRoom === "Rauchen" ? (
+              <button
+                className={`btn ${s.isSmoking ? "danger" : ""}`}
+                style={{ width: "100%", marginTop: 10 }}
+                onClick={() => setSmoking(!s.isSmoking)}
+              >
+                {s.isSmoking ? "🚬 Rauchen (An)" : "✅ Rauchen (Aus)"}
+              </button>
+            ) : (
+              <button
+                className="btn"
+                style={{ width: "100%", marginTop: 10 }}
+                onClick={() => {
+                  s.setCurrentRoom(null);
+                  socketRef.current?.close();
+                }}
+              >
+                Raum wechseln
+              </button>
+            )}
           </div>
 
           <div className="card">
@@ -205,11 +216,6 @@ export function App() {
                         <div className="muted">{m.isSmoking ? "🚬 raucht" : "✅ hier"}</div>
                       </div>
                     </div>
-                    {m.id === s.myId && s.currentRoom === "Rauchen" && (
-                      <button className={`btn ${s.isSmoking ? "danger" : ""}`} onClick={() => setSmoking(!s.isSmoking)}>
-                        {s.isSmoking ? "🚬 Rauchen" : "Zurück"}
-                      </button>
-                    )}
                   </div>
                 ))
               )}
@@ -295,6 +301,44 @@ export function App() {
           </div>
         </div>
       </div>
+
+      {s.majorityActive && s.currentRoom === "Rauchen" && overlayVisible && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            flexDirection: "column",
+          }}
+        >
+          <button
+            className="btn"
+            style={{
+              position: "absolute",
+              top: 20,
+              right: 20,
+              width: 40,
+              height: 40,
+              padding: 0,
+              fontSize: 20,
+            }}
+            onClick={() => setOverlayVisible(false)}
+          >
+            ✕
+          </button>
+          <div style={{ fontSize: 80, fontWeight: 900, color: "red", textAlign: "center", lineHeight: 1 }}>
+            DU MUSST<br />
+            RAUCHEN
+          </div>
+        </div>
+      )}
 
       <Toasts />
     </>

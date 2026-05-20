@@ -66,27 +66,12 @@ export function connectRealtime(serverUrl: string): RpSocket {
       const who = data.name;
       window.rp?.log(`[realtime:smoking] ${who}: ${data.isSmoking ? "smoking" : "not smoking"}`);
       s.pushToast({ title: "Rauchen-Status", body: `${who} ist ${data.isSmoking ? "auf Rauchen" : "wieder da"}` });
-      try {
-        window.rp?.notify("Raucherpause", `${who} ist ${data.isSmoking ? "auf Rauchen" : "wieder da"}`);
-      } catch {
-        // ignore
-      }
       return;
     }
 
     if (data.type === "majorityState") {
       window.rp?.log(`[realtime:majority] isActive=${data.isActive}`);
       s.setMajorityActive(data.isActive);
-      if (data.isActive) {
-        s.pushToast({ title: "Mehrheit raucht", body: "DU MUSS RAUCHEN" });
-        try {
-          window.rp?.notify("Mehrheit raucht", "DU MUSS RAUCHEN");
-        } catch {
-          // ignore
-        }
-      } else {
-        s.pushToast({ title: "Entwarnung", body: "Mehrheit nicht mehr aktiv" });
-      }
       return;
     }
 
