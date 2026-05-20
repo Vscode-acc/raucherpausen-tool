@@ -13,6 +13,7 @@ export function App() {
   const [selectedFile, setSelectedFile] = useState<{ file: File; preview: string } | null>(null);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const connectedRef = useRef(false); // Track if we're connected
 
   // Initialize server URL
   useEffect(() => {
@@ -30,16 +31,20 @@ export function App() {
       return;
     }
 
-    // First time: connect to server
-    if (!socketRef.current) {
+    // First time: connect to server and join
+    if (!connectedRef.current) {
       const sock = connectRealtime(s.serverUrl);
       socketRef.current = sock;
-      window.rp?.log(`[app] connecting to server`);
+      connectedRef.current = true;
+      s.setMyName(name);
+      window.rp?.log(`[app] connecting to server and joining room ${roomName}`);
+      sock.send({ type: "joinRoom", roomName, name });
+    } else {
+      // Already connected: just change room
+      s.setMyName(name);
+      window.rp?.log(`[app] changing to room ${roomName}`);
+      socketRef.current?.send({ type: "changeRoom", roomName, name });
     }
-
-    s.setMyName(name);
-    window.rp?.log(`[app] switching to room ${roomName}`);
-    socketRef.current?.send({ type: "joinRoom", roomName, name });
   }
 
   function setSmoking(next: boolean) {
@@ -188,24 +193,12 @@ export function App() {
 
           {/* Room Header */}
           <div className="card">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <div className="title" style={{ margin: 0 }}>{s.currentRoom}</div>
-              {s.currentRoom === "Rauchen" && (
-                <button
-                  className={`btn ${s.isSmoking ? "danger" : ""}`}
-                  onClick={() => setSmoking(!s.isSmoking)}
-                  style={{ padding: "6px 12px", fontSize: "14px", whiteSpace: "nowrap" }}
-                >
-                  {s.isSmoking ? "🚬" : "✅"}
-                </button>
-              )}
-            </div>
+            <div className="title" style={{ margin: 0 }}>{s.currentRoom}</div>
             <button
               className="btn"
               style={{ width: "100%", marginTop: 10 }}
               onClick={() => {
                 s.setCurrentRoom(null);
-                socketRef.current?.close();
               }}
             >
               Raum verlassen
@@ -232,10 +225,21 @@ export function App() {
                   <div key={m.id} className="member">
                     <div className="memberName">
                       {s.currentRoom === "Rauchen" && <span className={`dot ${m.isSmoking ? "danger" : "ok"}`} />}
-                      <div style={{ fontWeight: 700 }}>
-                        {m.name} {m.isSmoking ? "🚬" : ""} {m.id === s.myId ? "(du)" : ""}
+                      <div style={{ fontWeight: 700, display: "flex", gap: "3px", alignItems: "center" }}>
+                        <span>{m.name}</span>
+                        {m.isSmoking && <span>🚬</span>}
+                        {m.id === s.myId && <span style={{ fontSize: "13px", opacity: 0.7 }}>(du)</span>}
                       </div>
                     </div>
+                    {m.id === s.myId && s.currentRoom === "Rauchen" && (
+                      <button
+                        className={`btn ${s.isSmoking ? "danger" : ""}`}
+                        onClick={() => setSmoking(!s.isSmoking)}
+                        style={{ padding: "4px 10px", fontSize: "12px", whiteSpace: "nowrap" }}
+                      >
+                        {s.isSmoking ? "🚬" : "✅"}
+                      </button>
+                    )}
                   </div>
                 ))
               )}

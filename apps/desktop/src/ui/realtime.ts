@@ -56,7 +56,7 @@ export function connectRealtime(serverUrl: string): RpSocket {
     }
 
     if (data.type === "presenceUpdate") {
-      window.rp?.log(`[realtime:presence] roomName=${data.roomName} members=${data.members.length}`);
+      window.rp?.log(`[realtime:presence] members=${data.members.length}`);
       s.setMembers(data.members);
       s.setMajorityActive(Boolean((data as any).majorityActive));
       return;
