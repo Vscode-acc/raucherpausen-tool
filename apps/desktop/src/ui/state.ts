@@ -16,7 +16,7 @@ type AppState = {
 
   isSmoking: boolean;
 
-  chatMessages: ChatMessage[];
+  chatMessages: Record<Room, ChatMessage[]>;
   toasts: Toast[];
 
   setServerUrl: (url: string) => void;
@@ -27,8 +27,8 @@ type AppState = {
   setMajorityActive: (active: boolean) => void;
   setIsSmoking: (val: boolean) => void;
 
-  addChatMessage: (msg: ChatMessage) => void;
-  clearChat: () => void;
+  addChatMessage: (room: Room, msg: ChatMessage) => void;
+  clearChat: (room: Room) => void;
 
   pushToast: (t: { title: string; body: string }) => void;
   popToast: (id: string) => void;
@@ -46,7 +46,11 @@ export const useAppState = create<AppState>((set, get) => ({
 
   isSmoking: false,
 
-  chatMessages: [],
+  chatMessages: {
+    Rauchen: [],
+    memes: [],
+    Chat: [],
+  },
   toasts: [],
 
   setServerUrl: (serverUrl) => set({ serverUrl }),
@@ -57,8 +61,20 @@ export const useAppState = create<AppState>((set, get) => ({
   setMajorityActive: (majorityActive) => set({ majorityActive }),
   setIsSmoking: (isSmoking) => set({ isSmoking }),
 
-  addChatMessage: (msg) => set({ chatMessages: [...get().chatMessages, msg].slice(-200) }),
-  clearChat: () => set({ chatMessages: [] }),
+  addChatMessage: (room, msg) => 
+    set({ 
+      chatMessages: {
+        ...get().chatMessages,
+        [room]: [...get().chatMessages[room], msg].slice(-200)
+      }
+    }),
+  clearChat: (room) => 
+    set({
+      chatMessages: {
+        ...get().chatMessages,
+        [room]: []
+      }
+    }),
 
   pushToast: ({ title, body }) => {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;

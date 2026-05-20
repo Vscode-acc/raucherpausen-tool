@@ -77,13 +77,16 @@ export function connectRealtime(serverUrl: string): RpSocket {
 
     if (data.type === "chatMessage") {
       window.rp?.log(`[realtime:chat] from ${data.name}: "${data.text.slice(0, 50)}${data.text.length > 50 ? "..." : ""}"`);
-      s.addChatMessage({
-        id: data.id,
-        name: data.name,
-        text: data.text,
-        createdAt: Number(data.createdAt || Date.now()),
-        fileDataUrl: data.fileDataUrl,
-      });
+      const room = s.currentRoom;
+      if (room) {
+        s.addChatMessage(room, {
+          id: data.id,
+          name: data.name,
+          text: data.text,
+          createdAt: Number(data.createdAt || Date.now()),
+          fileDataUrl: data.fileDataUrl,
+        });
+      }
       return;
     }
 

@@ -165,28 +165,47 @@ export function App() {
     <>
       <div className="app">
         <div className="sidebar">
+          {/* Room Switcher */}
           <div className="card">
-            <div className="title">{s.currentRoom}</div>
-            {s.currentRoom === "Rauchen" ? (
-              <button
-                className={`btn ${s.isSmoking ? "danger" : ""}`}
-                style={{ width: "100%", marginTop: 10 }}
-                onClick={() => setSmoking(!s.isSmoking)}
-              >
-                {s.isSmoking ? "🚬 Rauchen (An)" : "✅ Rauchen (Aus)"}
-              </button>
-            ) : (
-              <button
-                className="btn"
-                style={{ width: "100%", marginTop: 10 }}
-                onClick={() => {
-                  s.setCurrentRoom(null);
-                  socketRef.current?.close();
-                }}
-              >
-                Raum wechseln
-              </button>
-            )}
+            <div className="title" style={{ marginBottom: 10 }}>Wechsle Raum</div>
+            <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
+              {ROOMS.map((room) => (
+                <button
+                  key={room}
+                  className={`btn ${s.currentRoom === room ? "primary" : ""}`}
+                  onClick={() => joinRoom(room)}
+                  style={{ width: "100%" }}
+                >
+                  {room}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Room Header */}
+          <div className="card">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div className="title" style={{ margin: 0 }}>{s.currentRoom}</div>
+              {s.currentRoom === "Rauchen" && (
+                <button
+                  className={`btn ${s.isSmoking ? "danger" : ""}`}
+                  onClick={() => setSmoking(!s.isSmoking)}
+                  style={{ padding: "6px 12px", fontSize: "14px", whiteSpace: "nowrap" }}
+                >
+                  {s.isSmoking ? "🚬" : "✅"}
+                </button>
+              )}
+            </div>
+            <button
+              className="btn"
+              style={{ width: "100%", marginTop: 10 }}
+              onClick={() => {
+                s.setCurrentRoom(null);
+                socketRef.current?.close();
+              }}
+            >
+              Raum verlassen
+            </button>
           </div>
 
           <div className="card">
@@ -231,7 +250,7 @@ export function App() {
 
         <div className="main">
           <div className="card" style={{ flex: 1, overflow: "auto" }}>
-            {s.chatMessages.map((msg) => (
+            {s.currentRoom && s.chatMessages[s.currentRoom].map((msg) => (
               <div key={`${msg.id}-${msg.createdAt}`} style={{ marginBottom: 15 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: "#666" }}>
                   {msg.name}
