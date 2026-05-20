@@ -65,8 +65,10 @@ const ToggleMsg = z.object({
 
 const ChatMsg = z.object({
   type: z.literal("chatMessage"),
-  text: z.string().trim().min(1).max(500),
+  text: z.string().max(500).optional(),
   fileDataUrl: z.string().optional(),
+}).refine((msg) => msg.text || msg.fileDataUrl, {
+  message: "Either text or fileDataUrl must be provided",
 });
 
 const ClientMsg = z.discriminatedUnion("type", [JoinMsg, ToggleMsg, ChatMsg]);
