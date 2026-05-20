@@ -2,7 +2,8 @@
   "appId": "com.raucherpausen.tool",
   "productName": "Raucherpausen-Tool",
   "directories": {
-    "output": "release"
+    "output": "release",
+    "buildResources": "."
   },
   "files": [
     "dist/**",
@@ -10,6 +11,7 @@
     "electron/preload.cjs",
     "package.json"
   ],
+  "asarUnpack": ["dist-renderer/**"],
   "win": {
     "target": [
       {

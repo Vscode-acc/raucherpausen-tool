@@ -11,7 +11,7 @@ type Member = {
 };
 
 type Room = {
-  code: string;
+  name: string;
   members: Map<string, Member>;
   sockets: Map<string, WebSocket>;
   majorityActive: boolean;
@@ -20,20 +20,17 @@ type Room = {
 // Minimal type to avoid pulling DOM lib in tsconfig
 type WebSocket = import("ws").WebSocket;
 
+const FIXED_ROOMS = ["Rauchen", "memes", "Chat"] as const;
 const rooms = new Map<string, Room>();
 
-function getOrCreateRoom(codeRaw: string): Room {
-  const code = codeRaw.trim().toUpperCase();
-  const existing = rooms.get(code);
-  if (existing) return existing;
-  const created: Room = {
-    code,
+// Initialize fixed rooms
+for (const roomName of FIXED_ROOMS) {
+  rooms.set(roomName, {
+    name: roomName,
     members: new Map(),
     sockets: new Map(),
     majorityActive: false,
-  };
-  rooms.set(code, created);
-  return created;
+  });
 }
 
 function computeMajorityActive(room: Room): boolean {
@@ -57,7 +54,7 @@ function send(ws: WebSocket, payload: unknown) {
 
 const JoinMsg = z.object({
   type: z.literal("joinRoom"),
-  code: z.string().min(1).max(32),
+  roomName: z.enum(["Rauchen", "memes", "Chat"]),
   name: z.string().min(1).max(48),
 });
 
@@ -69,6 +66,7 @@ const ToggleMsg = z.object({
 const ChatMsg = z.object({
   type: z.literal("chatMessage"),
   text: z.string().trim().min(1).max(500),
+  fileDataUrl: z.string().optional(),
 });
 
 const ClientMsg = z.discriminatedUnion("type", [JoinMsg, ToggleMsg, ChatMsg]);
@@ -81,7 +79,7 @@ function presencePayload(room: Room) {
     name: m.name,
     isSmoking: m.isSmoking,
   }));
-  return { type: "presenceUpdate" as const, code: room.code, members, majorityActive: room.majorityActive };
+  return { type: "presenceUpdate" as const, roomName: room.name, members, majorityActive: room.majorityActive };
 }
 
 function maybeEmitMajority(room: Room) {
@@ -143,17 +141,23 @@ wss.on("connection", (ws) => {
 
     const msg = parsed.data;
     if (msg.type === "joinRoom") {
-      room = getOrCreateRoom(msg.code);
+      const roomName = msg.roomName as string;
+      room = rooms.get(roomName) || null;
+      if (!room) {
+        console.log(`[ws:error] ${socketId} - Invalid room: ${roomName}`);
+        send(ws, { type: "error", message: "Invalid room" });
+        return;
+      }
       memberId = socketId;
 
       const safeName = msg.name.trim().slice(0, 48);
       room.members.set(memberId, { id: memberId, name: safeName, isSmoking: false });
       room.sockets.set(memberId, ws);
 
-      console.log(`[ws:join] ${memberId} joined room ${room.code} as "${safeName}" (${room.members.size} total)`);
+      console.log(`[ws:join] ${memberId} joined room ${room.name} as "${safeName}" (${room.members.size} total)`);
 
       // send initial presence to joiner + broadcast update
-      send(ws, { type: "joined", id: memberId, code: room.code });
+      send(ws, { type: "joined", id: memberId, roomName: room.name });
       broadcast(room, presencePayload(room));
       maybeEmitMajority(room);
       return;
@@ -169,7 +173,7 @@ wss.on("connection", (ws) => {
       if (!member) return;
 
       member.isSmoking = msg.isSmoking;
-      console.log(`[ws:smoking] ${memberId} in ${room.code}: ${msg.isSmoking ? "smoking" : "not smoking"}`);
+      console.log(`[ws:smoking] ${memberId} in ${room.name}: ${msg.isSmoking ? "smoking" : "not smoking"}`);
       broadcast(room, { type: "smokingNotice", id: member.id, name: member.name, isSmoking: member.isSmoking });
       broadcast(room, presencePayload(room));
       maybeEmitMajority(room);
@@ -185,26 +189,29 @@ wss.on("connection", (ws) => {
       const member = room.members.get(memberId);
       if (!member) return;
       const text = msg.text.trim().slice(0, 500);
-      if (!text) return;
-      console.log(`[ws:chat] ${memberId} in ${room.code}: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"`);
-      broadcast(room, {
+      if (!text && !msg.fileDataUrl) return;
+      console.log(`[ws:chat] ${memberId} in ${room.name}: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"`);
+      const payload: any = {
         type: "chatMessage",
         id: member.id,
         name: member.name,
         text,
         createdAt: Date.now(),
-      });
+      };
+      if (msg.fileDataUrl) {
+        payload.fileDataUrl = msg.fileDataUrl;
+      }
+      broadcast(room, payload);
     }
   });
 
   ws.on("close", () => {
-    console.log(`[ws:close] ${memberId ? `${memberId} from ${room?.code}` : socketId}`);
+    console.log(`[ws:close] ${memberId ? `${memberId} from ${room?.name}` : socketId}`);
     if (!room || !memberId) return;
     room.sockets.delete(memberId);
     room.members.delete(memberId);
     broadcast(room, presencePayload(room));
     maybeEmitMajority(room);
-    if (room.members.size === 0) rooms.delete(room.code);
   });
 
   const interval = setInterval(() => {

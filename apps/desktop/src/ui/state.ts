@@ -1,21 +1,14 @@
 import { create } from "zustand";
 
 export type Member = { id: string; name: string; isSmoking: boolean };
+export type Room = "Rauchen" | "memes" | "Chat";
 
 type Toast = { id: string; title: string; body: string; createdAt: number };
-export type ChatMessage = { id: string; name: string; text: string; createdAt: number };
-export type DisplayInfo = {
-  id: number;
-  bounds: { x: number; y: number; width: number; height: number };
-  size: { width: number; height: number };
-  scaleFactor: number;
-  isPrimary: boolean;
-};
+export type ChatMessage = { id: string; name: string; text: string; createdAt: number; fileDataUrl?: string };
 
 type AppState = {
   serverUrl: string;
-  joined: boolean;
-  roomCode: string;
+  currentRoom: Room | null;
   myId: string | null;
   myName: string;
   members: Member[];
@@ -23,41 +16,17 @@ type AppState = {
 
   isSmoking: boolean;
 
-  alwaysOnTop: boolean;
-  fullScreen: boolean;
-  displays: DisplayInfo[];
-  selectedDisplayId: number | null;
-
-  // animation params
-  scale: number; // 0.2..3
-  speed: number; // px/s
-  animSpeed: number; // 0.25..6 (multiplier)
-
-  gifBytesBase64: string | null;
-  gifVisible: boolean;
-  gifRunning: boolean;
   chatMessages: ChatMessage[];
   toasts: Toast[];
 
   setServerUrl: (url: string) => void;
+  setCurrentRoom: (room: Room | null) => void;
   setMyName: (name: string) => void;
-  setRoomCode: (code: string) => void;
-  setJoined: (joined: boolean) => void;
   setMyId: (id: string | null) => void;
   setMembers: (members: Member[]) => void;
   setMajorityActive: (active: boolean) => void;
   setIsSmoking: (val: boolean) => void;
-  setAlwaysOnTop: (val: boolean) => void;
-  setFullScreen: (val: boolean) => void;
-  setDisplays: (val: DisplayInfo[]) => void;
-  setSelectedDisplayId: (val: number | null) => void;
 
-  setScale: (val: number) => void;
-  setSpeed: (val: number) => void;
-  setAnimSpeed: (val: number) => void;
-  setGifBytesBase64: (b64: string | null) => void;
-  setGifVisible: (visible: boolean) => void;
-  setGifRunning: (running: boolean) => void;
   addChatMessage: (msg: ChatMessage) => void;
   clearChat: () => void;
 
@@ -65,12 +34,11 @@ type AppState = {
   popToast: (id: string) => void;
 };
 
-const defaultServer = (import.meta as any).env?.VITE_SERVER_URL ?? "http://localhost:8787";
+const defaultServer = (import.meta as any).env?.VITE_SERVER_URL ?? "https://raucherpausen-tool.onrender.com";
 
 export const useAppState = create<AppState>((set, get) => ({
   serverUrl: String(defaultServer),
-  joined: false,
-  roomCode: "",
+  currentRoom: null,
   myId: null,
   myName: "",
   members: [],
@@ -78,42 +46,17 @@ export const useAppState = create<AppState>((set, get) => ({
 
   isSmoking: false,
 
-  // Keep the control tool window normal by default.
-  alwaysOnTop: false,
-  fullScreen: false,
-  displays: [],
-  selectedDisplayId: null,
-
-  scale: 0.2,
-  // Make it feel snappy out of the box; user can tune via sliders.
-  speed: 420,
-  animSpeed: 5,
-
-  gifBytesBase64: null,
-  gifVisible: true,
-  gifRunning: false,
   chatMessages: [],
   toasts: [],
 
   setServerUrl: (serverUrl) => set({ serverUrl }),
+  setCurrentRoom: (currentRoom) => set({ currentRoom }),
   setMyName: (myName) => set({ myName }),
-  setRoomCode: (roomCode) => set({ roomCode }),
-  setJoined: (joined) => set({ joined }),
   setMyId: (myId) => set({ myId }),
   setMembers: (members) => set({ members }),
   setMajorityActive: (majorityActive) => set({ majorityActive }),
   setIsSmoking: (isSmoking) => set({ isSmoking }),
-  setAlwaysOnTop: (alwaysOnTop) => set({ alwaysOnTop }),
-  setFullScreen: (fullScreen) => set({ fullScreen }),
-  setDisplays: (displays) => set({ displays }),
-  setSelectedDisplayId: (selectedDisplayId) => set({ selectedDisplayId }),
 
-  setScale: (scale) => set({ scale }),
-  setSpeed: (speed) => set({ speed }),
-  setAnimSpeed: (animSpeed) => set({ animSpeed }),
-  setGifBytesBase64: (gifBytesBase64) => set({ gifBytesBase64 }),
-  setGifVisible: (gifVisible) => set({ gifVisible }),
-  setGifRunning: (gifRunning) => set({ gifRunning }),
   addChatMessage: (msg) => set({ chatMessages: [...get().chatMessages, msg].slice(-200) }),
   clearChat: () => set({ chatMessages: [] }),
 
