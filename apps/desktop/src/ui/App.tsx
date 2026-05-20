@@ -30,12 +30,16 @@ export function App() {
       return;
     }
 
-    socketRef.current?.close();
-    const sock = connectRealtime(s.serverUrl);
-    socketRef.current = sock;
+    // First time: connect to server
+    if (!socketRef.current) {
+      const sock = connectRealtime(s.serverUrl);
+      socketRef.current = sock;
+      window.rp?.log(`[app] connecting to server`);
+    }
+
     s.setMyName(name);
-    window.rp?.log(`[app] joining room ${roomName} as ${name}`);
-    sock.send({ type: "joinRoom", roomName, name });
+    window.rp?.log(`[app] switching to room ${roomName}`);
+    socketRef.current?.send({ type: "joinRoom", roomName, name });
   }
 
   function setSmoking(next: boolean) {
@@ -228,11 +232,8 @@ export function App() {
                   <div key={m.id} className="member">
                     <div className="memberName">
                       {s.currentRoom === "Rauchen" && <span className={`dot ${m.isSmoking ? "danger" : "ok"}`} />}
-                      <div>
-                        <div style={{ fontWeight: 700 }}>
-                          {m.name} {m.id === s.myId ? "(du)" : ""}
-                        </div>
-                        <div className="muted">{m.isSmoking ? "🚬 raucht" : "✅ hier"}</div>
+                      <div style={{ fontWeight: 700 }}>
+                        {m.name} {m.isSmoking ? "🚬" : ""} {m.id === s.myId ? "(du)" : ""}
                       </div>
                     </div>
                   </div>
