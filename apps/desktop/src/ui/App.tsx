@@ -40,10 +40,10 @@ export function App() {
       window.rp?.log(`[app] connecting to server and joining room ${roomName}`);
       sock.send({ type: "joinRoom", roomName, name });
     } else {
-      // Already connected: just change room
+      // Already connected: just change room (send joinRoom again)
       s.setMyName(name);
       window.rp?.log(`[app] changing to room ${roomName}`);
-      socketRef.current?.send({ type: "changeRoom", roomName, name });
+      socketRef.current?.send({ type: "joinRoom", roomName, name });
     }
   }
 
