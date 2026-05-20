@@ -190,7 +190,7 @@ wss.on("connection", (ws) => {
       }
       const member = room.members.get(memberId);
       if (!member) return;
-      const text = msg.text.trim().slice(0, 500);
+      const text = (msg.text || "").trim().slice(0, 500);
       if (!text && !msg.fileDataUrl) return;
       console.log(`[ws:chat] ${memberId} in ${room.name}: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"`);
       const payload: any = {
