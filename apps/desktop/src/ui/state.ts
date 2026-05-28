@@ -18,6 +18,7 @@ type AppState = {
 
   chatMessages: Record<Room, ChatMessage[]>;
   toasts: Toast[];
+  unreadCounts: Record<Room, number>;
 
   setServerUrl: (url: string) => void;
   setCurrentRoom: (room: Room | null) => void;
@@ -29,12 +30,15 @@ type AppState = {
 
   addChatMessage: (room: Room, msg: ChatMessage) => void;
   clearChat: (room: Room) => void;
+  clearUnread: (room: Room) => void;
+  clearAllUnread: () => void;
 
   pushToast: (t: { title: string; body: string }) => void;
   popToast: (id: string) => void;
 };
 
-const defaultServer = (import.meta as any).env?.VITE_SERVER_URL ?? "https://raucherpausen-tool.onrender.com";
+// Server URL: Production on Render, dev on localhost
+const defaultServer = (import.meta as any).env?.VITE_SERVER_URL ?? "https://raucherpausen-server.onrender.com";
 
 export const useAppState = create<AppState>((set, get) => ({
   serverUrl: String(defaultServer),
@@ -52,6 +56,11 @@ export const useAppState = create<AppState>((set, get) => ({
     Chat: [],
   },
   toasts: [],
+  unreadCounts: {
+    Rauchen: 0,
+    memes: 0,
+    Chat: 0,
+  },
 
   setServerUrl: (serverUrl) => set({ serverUrl }),
   setCurrentRoom: (currentRoom) => set({ currentRoom }),
@@ -61,18 +70,44 @@ export const useAppState = create<AppState>((set, get) => ({
   setMajorityActive: (majorityActive) => set({ majorityActive }),
   setIsSmoking: (isSmoking) => set({ isSmoking }),
 
-  addChatMessage: (room, msg) => 
-    set({ 
+  addChatMessage: (room, msg) => {
+    const newState = {
       chatMessages: {
         ...get().chatMessages,
         [room]: [...get().chatMessages[room], msg].slice(-200)
-      }
-    }),
+      },
+    };
+
+    // Only increment unread if message is NOT from current user
+    if (msg.name !== get().myName) {
+      newState.unreadCounts = {
+        ...get().unreadCounts,
+        [room]: get().unreadCounts[room] + 1,
+      };
+    }
+
+    set(newState);
+  },
   clearChat: (room) => 
     set({
       chatMessages: {
         ...get().chatMessages,
         [room]: []
+      }
+    }),
+  clearUnread: (room) =>
+    set({
+      unreadCounts: {
+        ...get().unreadCounts,
+        [room]: 0,
+      }
+    }),
+  clearAllUnread: () =>
+    set({
+      unreadCounts: {
+        Rauchen: 0,
+        memes: 0,
+        Chat: 0,
       }
     }),
 

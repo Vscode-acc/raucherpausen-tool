@@ -1,28 +1,27 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, screen } from "electron";
-import path from "node:path";
-import fs from "node:fs/promises";
 import fsSync from "node:fs";
-import os from "node:os";
 import type { OpenDialogOptions } from "electron";
+import { getLogsDir, getLogFilePath, getPreloadPath, getRendererHtmlPath, getDevServerUrl } from "./paths.js";
 
 // ===== LOGGING =====
-const logsDir = path.join(os.homedir(), "AppData", "Local", "raucherpausen-tool", "logs");
-try {
-  if (!fsSync.existsSync(logsDir)) {
-    fsSync.mkdirSync(logsDir, { recursive: true });
+function ensureLogsDir() {
+  try {
+    const logsDir = getLogsDir();
+    if (!fsSync.existsSync(logsDir)) {
+      fsSync.mkdirSync(logsDir, { recursive: true });
+    }
+  } catch (e) {
+    console.error("Failed to create logs directory:", e);
   }
-} catch {
-  console.error("Failed to create logs directory");
 }
-
-const logFile = path.join(logsDir, `app-${new Date().toISOString().split("T")[0]}.log`);
 
 function log(...args: any[]) {
   const timestamp = new Date().toISOString();
   const message = `[${timestamp}] ${args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" ")}`;
   console.log(message);
   try {
-    fsSync.appendFileSync(logFile, message + "\n", { encoding: "utf-8" });
+    ensureLogsDir();
+    fsSync.appendFileSync(getLogFilePath(), message + "\n", { encoding: "utf-8" });
   } catch (e) {
     console.error("Failed to write to log file:", e);
   }
@@ -34,14 +33,11 @@ function logError(error: any, context?: string) {
   const message = context ? `[${timestamp}] ERROR [${context}] ${errorStr}` : `[${timestamp}] ERROR ${errorStr}`;
   console.error(message);
   try {
-    fsSync.appendFileSync(logFile, message + "\n", { encoding: "utf-8" });
+    ensureLogsDir();
+    fsSync.appendFileSync(getLogFilePath(), message + "\n", { encoding: "utf-8" });
   } catch (e) {
     console.error("Failed to write error to log file:", e);
   }
-}
-
-function getLogFilePath() {
-  return logFile;
 }
 // ===== END LOGGING =====
 
@@ -53,22 +49,33 @@ log(`isDev: ${isDev}, openDevTools: ${shouldOpenDevTools}`);
 log(`logFile: ${getLogFilePath()}`);
 let controlWindow: BrowserWindow | null = null;
 
-function getAssetPath(...parts: string[]) {
-  return path.join(app.getAppPath(), ...parts);
-}
-
-function getPreloadPath() {
-  // In dev we run `electron .` from `apps/desktop`, so app.getAppPath() already
-  // points to that folder. Using `apps/desktop/...` would duplicate the path.
-  return isDev ? path.join(app.getAppPath(), "electron", "preload.cjs") : getAssetPath("electron", "preload.cjs");
-}
-
 async function loadRenderer(win: BrowserWindow) {
-  if (isDev) {
-    await win.loadURL("http://localhost:5173");
-    return;
+  try {
+    if (isDev) {
+      const devUrl = getDevServerUrl();
+      log(`[window] loading dev server: ${devUrl}`);
+      await win.loadURL(devUrl);
+      return;
+    }
+    
+    const htmlPath = getRendererHtmlPath();
+    log(`[window] loading HTML from: ${htmlPath}`);
+    log(`[window] app.isPackaged: ${app.isPackaged}`);
+    log(`[window] app.getAppPath(): ${app.getAppPath()}`);
+    
+    await win.loadFile(htmlPath);
+    log(`[window] HTML loaded successfully`);
+  } catch (err: any) {
+    logError(err, "loadRenderer");
+    log(`[window] Error details: ${err?.message}`);
+    // Try to show an error message
+    if (controlWindow) {
+      controlWindow.webContents.send("error", {
+        title: "Fehler beim Laden",
+        message: err?.message || "Unbekannter Fehler beim Laden der Anwendung"
+      });
+    }
   }
-  await win.loadFile(getAssetPath("dist-renderer", "index.html"));
 }
 
 async function createControlWindow() {
@@ -123,6 +130,17 @@ ipcMain.on("frontend:log", (_evt, level: string, ...args: any[]) => {
     logError(msg, "frontend");
   } else {
     log(`[${level}]`, msg);
+  }
+});
+
+ipcMain.on("badge:set", (_evt, count: number) => {
+  try {
+    if (controlWindow) {
+      app.setBadgeCount(count);
+      log(`[badge] set to ${count}`);
+    }
+  } catch (e) {
+    logError(e, "badge:set");
   }
 });
 

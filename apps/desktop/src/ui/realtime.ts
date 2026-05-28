@@ -113,6 +113,7 @@ export function connectRealtime(serverUrl: string): RpSocket {
     s.setMyId(null);
     s.setMembers([]);
     s.setMajorityActive(false);
+    s.clearAllUnread();
     s.pushToast({ title: "Socket", body: "Getrennt" });
   });
 

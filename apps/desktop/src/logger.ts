@@ -2,20 +2,28 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
-const logsDir = path.join(os.homedir(), "AppData", "Local", "raucherpausen-tool", "logs");
+let logFile: string;
 
-// Ensure logs directory exists
-try {
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir, { recursive: true });
+// Initialize on first use - use platform-independent paths
+function init() {
+  if (!logFile) {
+    const logsDir = path.join(os.homedir(), ".raucherpausen-tool", "logs");
+    
+    try {
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+    } catch {
+      console.error("Failed to create logs directory");
+    }
+    
+    const today = new Date().toISOString().split("T")[0];
+    logFile = path.join(logsDir, `app-${today}.log`);
   }
-} catch {
-  console.error("Failed to create logs directory");
 }
 
-const logFile = path.join(logsDir, `app-${new Date().toISOString().split("T")[0]}.log`);
-
 export function log(...args: any[]) {
+  init();
   const timestamp = new Date().toISOString();
   const message = `[${timestamp}] ${args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" ")}`;
 
@@ -29,6 +37,7 @@ export function log(...args: any[]) {
 }
 
 export function logError(error: any, context?: string) {
+  init();
   const timestamp = new Date().toISOString();
   const errorStr = error instanceof Error ? `${error.name}: ${error.message}\n${error.stack}` : JSON.stringify(error);
   const message = context ? `[${timestamp}] ERROR [${context}] ${errorStr}` : `[${timestamp}] ERROR ${errorStr}`;
@@ -43,5 +52,6 @@ export function logError(error: any, context?: string) {
 }
 
 export function getLogFilePath() {
+  init();
   return logFile;
 }

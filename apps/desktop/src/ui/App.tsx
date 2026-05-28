@@ -14,6 +14,8 @@ export function App() {
   const [overlayVisible, setOverlayVisible] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectedRef = useRef(false); // Track if we're connected
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
 
   // Initialize server URL
   useEffect(() => {
@@ -23,6 +25,46 @@ export function App() {
       socketRef.current = null;
     };
   }, []);
+
+  // Update badge when unread counts change
+  useEffect(() => {
+    const totalUnread = Object.values(s.unreadCounts).reduce((a, b) => a + b, 0);
+    window.rp?.setBadgeCount(totalUnread);
+  }, [s.unreadCounts]);
+
+  // Clear unread only when switching rooms (don't include unreadCounts in deps)
+  useEffect(() => {
+    if (s.currentRoom) {
+      s.clearUnread(s.currentRoom);
+    }
+  }, [s.currentRoom]);
+
+  // Scroll to bottom when new messages arrive (if already at bottom)
+  useEffect(() => {
+    if (isScrolledToBottom && chatContainerRef.current) {
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 0);
+    }
+  }, [s.currentRoom, s.chatMessages, isScrolledToBottom]);
+
+  // Handle scroll position tracking
+  const handleChatScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50; // 50px threshold
+      setIsScrolledToBottom(isAtBottom);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      setIsScrolledToBottom(true);
+    }
+  };
 
   function joinRoom(roomName: typeof ROOMS[number]) {
     const name = myName.trim();
@@ -254,7 +296,7 @@ export function App() {
         </div>
 
         <div className="main">
-          <div className="card" style={{ flex: 1, overflow: "auto" }}>
+          <div className="card" style={{ flex: 1, overflow: "auto", position: "relative" }} ref={chatContainerRef} onScroll={handleChatScroll}>
             {s.currentRoom && s.chatMessages[s.currentRoom].map((msg) => (
               <div key={`${msg.id}-${msg.createdAt}`} style={{ marginBottom: 15 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: "#666" }}>
@@ -275,6 +317,32 @@ export function App() {
                 )}
               </div>
             ))}
+            {!isScrolledToBottom && (
+              <button
+                onClick={scrollToBottom}
+                style={{
+                  position: "absolute",
+                  bottom: 20,
+                  right: 20,
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: "#4a9eff",
+                  border: "none",
+                  color: "white",
+                  fontSize: 20,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                  zIndex: 10,
+                }}
+                title="Zur neuesten Nachricht springen"
+              >
+                ↓
+              </button>
+            )}
           </div>
 
           <div className="card">

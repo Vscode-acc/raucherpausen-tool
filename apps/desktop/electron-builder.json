@@ -11,7 +11,7 @@
     "electron/preload.cjs",
     "package.json"
   ],
-  "asarUnpack": ["dist-renderer/**"],
+  "asar": false,
   "win": {
     "target": [
       {
