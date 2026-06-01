@@ -48,6 +48,15 @@ function broadcast(room: Room, payload: unknown) {
   }
 }
 
+function broadcastToAll(payload: unknown) {
+  const msg = JSON.stringify(payload);
+  for (const room of rooms.values()) {
+    for (const ws of room.sockets.values()) {
+      if (ws.readyState === ws.OPEN) ws.send(msg);
+    }
+  }
+}
+
 function send(ws: WebSocket, payload: unknown) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload));
 }
@@ -256,9 +265,8 @@ server.listen(PORT, "0.0.0.0", () => {
   // eslint-disable-next-line no-console
   console.log(`[server] listening on http://0.0.0.0:${PORT}`);
   
-  // Self-ping to prevent free tier from spinning down due to inactivity
-  // HTTP requests count as real activity, unlike WebSocket pings
-  // Run every 8 minutes to ensure server stays active (spindown typically after ~15 mins)
+  // Keep-alive with dual approach: HTTP ping + client reconnects
+  // This ensures the server stays active on free tier
   setInterval(() => {
     // Log current server status
     let totalMembers = 0;
@@ -269,7 +277,17 @@ server.listen(PORT, "0.0.0.0", () => {
     }
     console.log(`[status-check] active rooms: [${roomStatus.trim()}] | total members: ${totalMembers}`);
     
-    // Send HTTP request to trigger real activity
+    // Send force-reconnect to all connected clients every 10 minutes
+    // This creates real WebSocket activity that counts as server usage
+    if (totalMembers > 0) {
+      console.log(`[force-reconnect] triggering reconnect for all clients`);
+      broadcastToAll({
+        type: "forceReconnect",
+        reason: "server-keep-alive",
+      });
+    }
+    
+    // Also send HTTP request to trigger real HTTP activity
     const req = http.get(`http://localhost:${PORT}/health`, (res) => {
       let data = "";
       res.on("data", (chunk) => {
@@ -282,6 +300,6 @@ server.listen(PORT, "0.0.0.0", () => {
     req.on("error", (err) => {
       console.error(`[keep-alive] error: ${err.message}`);
     });
-  }, 8 * 60 * 1000); // Every 8 minutes
+  }, 10 * 60 * 1000); // Every 10 minutes
 });
 
