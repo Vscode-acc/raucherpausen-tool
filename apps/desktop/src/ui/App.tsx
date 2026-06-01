@@ -179,7 +179,7 @@ export function App() {
             <label className="muted">Dein Name</label>
             <input
               className="input"
-              placeholder="z.B. Henning"
+              placeholder=""
               value={myName}
               onChange={(e) => setMyName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && joinRoom("Chat")}

@@ -104,6 +104,16 @@ export function connectRealtime(serverUrl: string): RpSocket {
       ws.send(JSON.stringify(msg));
     }
     useAppState.getState().pushToast({ title: "Socket", body: "Verbunden" });
+    
+    // Send ping every 60 seconds to keep connection active
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        window.rp?.log(`[realtime:ping] sending keep-alive ping`);
+        send({ type: "ping" });
+      }
+    }, 60_000);
+    
+    ws.addEventListener("close", () => clearInterval(pingInterval), { once: true });
   });
 
   ws.addEventListener("close", () => {

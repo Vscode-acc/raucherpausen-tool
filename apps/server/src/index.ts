@@ -71,7 +71,11 @@ const ChatMsg = z.object({
   message: "Either text or fileDataUrl must be provided",
 });
 
-const ClientMsg = z.discriminatedUnion("type", [JoinMsg, ToggleMsg, ChatMsg]);
+const PingMsg = z.object({
+  type: z.literal("ping"),
+});
+
+const ClientMsg = z.discriminatedUnion("type", [JoinMsg, ToggleMsg, ChatMsg, PingMsg]);
 
 type ServerPresenceMember = { id: string; name: string; isSmoking: boolean };
 
@@ -204,6 +208,17 @@ wss.on("connection", (ws) => {
         payload.fileDataUrl = msg.fileDataUrl;
       }
       broadcast(room, payload);
+      return;
+    }
+
+    if (msg.type === "ping") {
+      // Log keep-alive ping from client
+      if (room && memberId) {
+        console.log(`[ws:ping] ${memberId} in ${room.name} - keep-alive`);
+      } else {
+        console.log(`[ws:ping] ${socketId} - keep-alive (not joined)`);
+      }
+      return;
     }
   });
 
