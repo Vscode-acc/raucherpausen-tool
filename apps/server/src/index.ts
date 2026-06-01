@@ -258,19 +258,30 @@ server.listen(PORT, "0.0.0.0", () => {
   
   // Self-ping to prevent free tier from spinning down due to inactivity
   // HTTP requests count as real activity, unlike WebSocket pings
+  // Run every 8 minutes to ensure server stays active (spindown typically after ~15 mins)
   setInterval(() => {
+    // Log current server status
+    let totalMembers = 0;
+    let roomStatus = "";
+    for (const [roomName, room] of rooms) {
+      totalMembers += room.members.size;
+      roomStatus += `${roomName}:${room.members.size} `;
+    }
+    console.log(`[status-check] active rooms: [${roomStatus.trim()}] | total members: ${totalMembers}`);
+    
+    // Send HTTP request to trigger real activity
     const req = http.get(`http://localhost:${PORT}/health`, (res) => {
       let data = "";
       res.on("data", (chunk) => {
         data += chunk;
       });
       res.on("end", () => {
-        console.log(`[self-ping] keep-alive ping sent, response: ${data.trim()}`);
+        console.log(`[keep-alive] HTTP ping sent successfully`);
       });
     });
     req.on("error", (err) => {
-      console.error(`[self-ping] error: ${err.message}`);
+      console.error(`[keep-alive] error: ${err.message}`);
     });
-  }, 5 * 60 * 1000); // Every 5 minutes
+  }, 8 * 60 * 1000); // Every 8 minutes
 });
 
