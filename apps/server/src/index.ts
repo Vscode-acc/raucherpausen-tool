@@ -255,5 +255,22 @@ wss.on("connection", (ws) => {
 server.listen(PORT, "0.0.0.0", () => {
   // eslint-disable-next-line no-console
   console.log(`[server] listening on http://0.0.0.0:${PORT}`);
+  
+  // Self-ping to prevent free tier from spinning down due to inactivity
+  // HTTP requests count as real activity, unlike WebSocket pings
+  setInterval(() => {
+    const req = http.get(`http://localhost:${PORT}/health`, (res) => {
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+      res.on("end", () => {
+        console.log(`[self-ping] keep-alive ping sent, response: ${data.trim()}`);
+      });
+    });
+    req.on("error", (err) => {
+      console.error(`[self-ping] error: ${err.message}`);
+    });
+  }, 5 * 60 * 1000); // Every 5 minutes
 });
 
