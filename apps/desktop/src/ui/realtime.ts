@@ -62,6 +62,15 @@ export function connectRealtime(serverUrl: string): RpSocket {
       s.pushToast({ title: "Verbunden", body: `Raum ${data.roomName}` });
       // Save join info for auto-rejoin
       lastJoinInfo = { roomName: data.roomName, name: s.myName || "" };
+      
+      // If this is a reconnect, reload the page after a short delay to refresh the UI state
+      if (reconnectAttempts > 0) {
+        window.rp?.log(`[realtime:joined] reconnected, reloading page in 500ms`);
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      }
+      
       reconnectAttempts = 0; // Reset on successful join
       return;
     }
